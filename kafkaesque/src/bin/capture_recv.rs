@@ -16,7 +16,7 @@ fn main() {
 
         let topic = std::env::args().nth(1).unwrap();
         let source_peers = std::env::args().nth(2).unwrap().parse::<usize>().unwrap();
-        let brokers = "localhost:9092";
+        let brokers = std::env::args().nth(3).unwrap();
 
         // Create Kafka stuff.
         let mut consumer_config = ClientConfig::new();

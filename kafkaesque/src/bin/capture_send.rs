@@ -15,7 +15,7 @@ fn main() {
         // target topic name.
         let topic = std::env::args().nth(1).unwrap();
         let count = std::env::args().nth(2).unwrap().parse::<u64>().unwrap();
-        let brokers = "localhost:9092";
+        let brokers = std::env::args().nth(3).unwrap();
 
         // Create Kafka stuff.
         let mut producer_config = ClientConfig::new();
