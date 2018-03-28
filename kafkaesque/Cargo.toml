@@ -6,7 +6,9 @@ authors = ["Frank McSherry <fmcsherry@me.com>"]
 [dependencies]
 clap="*"
 abomonation="0.5"
-timely="0.5"
+timely= { path = "../" }
+timely_communication = "0.5"
+hostname = "^0.1"
 
 [dependencies.rdkafka]
 version = "0.14.0"

@@ -4,6 +4,8 @@ use timely_communication::{initialize, Configuration, Allocator, WorkerGuards};
 use dataflow::scopes::{Root, Child};
 use logging::LoggerConfig;
 
+use std::sync::Arc;
+
 /// Executes a single-threaded timely dataflow computation.
 ///
 /// The `example` method takes a closure on a `Scope` which it executes to initialize and run a
@@ -117,7 +119,7 @@ where T: Send+'static,
 /// ```
 pub fn execute<T, F>(config: Configuration, func: F) -> Result<WorkerGuards<T>,String>
 where T:Send+'static,
-      F: Fn(&mut Root<Allocator>)->T+Send+Sync+'static {
+      F: Fn(&mut Root<Allocator>, Arc<Configuration>)->T+Send+Sync+'static {
     // let logging_config = ::logging::blackhole();
     execute_logging(config, Default::default(), func)
 }
@@ -145,11 +147,17 @@ where T:Send+'static,
 /// ```
 pub fn execute_logging<T, F>(config: Configuration, logging_config: LoggerConfig, func: F) -> Result<WorkerGuards<T>,String>
 where T:Send+'static,
-      F: Fn(&mut Root<Allocator>)->T+Send+Sync+'static {
+      F: Fn(&mut Root<Allocator>, Arc<Configuration>)->T+Send+Sync+'static {
     let timely_logging = logging_config.timely_logging.clone();
+	let new_config;
+    match config {
+        Configuration::Thread => new_config = Arc::new(Configuration::Thread),
+        Configuration::Process(ref threads) => new_config = Arc::new(Configuration::Process(*threads)),
+        Configuration::Cluster(ref threads, ref process, ref addresses, ref report) => new_config = Arc::new(Configuration::Cluster(*threads, *process, addresses.clone(), *report))
+    }
     initialize(config, logging_config.communication_logging.clone(), move |allocator| {
         let mut root = Root::new(allocator, timely_logging.clone());
-        let result = func(&mut root);
+        let result = func(&mut root, new_config.clone());
         while root.step() { }
         result
     })
@@ -206,7 +214,7 @@ where T:Send+'static,
 pub fn execute_from_args<I, T, F>(iter: I, func: F) -> Result<WorkerGuards<T>,String>
     where I: Iterator<Item=String>,
           T:Send+'static,
-          F: Fn(&mut Root<Allocator>)->T+Send+Sync+'static, {
+          F: Fn(&mut Root<Allocator>, Arc<Configuration>)->T+Send+Sync+'static, {
     execute_from_args_logging(iter, Default::default(), func)
 }
 
@@ -234,6 +242,6 @@ pub fn execute_from_args<I, T, F>(iter: I, func: F) -> Result<WorkerGuards<T>,St
 pub fn execute_from_args_logging<I, T, F>(iter: I, logging_config: LoggerConfig, func: F) -> Result<WorkerGuards<T>,String>
     where I: Iterator<Item=String>,
           T:Send+'static,
-          F: Fn(&mut Root<Allocator>)->T+Send+Sync+'static, {
+          F: Fn(&mut Root<Allocator>, Arc<Configuration>)->T+Send+Sync+'static, {
     execute_logging(try!(Configuration::from_args(iter)), logging_config, func)
 }
